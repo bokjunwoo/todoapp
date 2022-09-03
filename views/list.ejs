@@ -35,12 +35,6 @@
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
     
     <script>
-
-        // const del = document.querySelector(".delete");
-        // del.addEventListener('click', function(e){
-        //     const 글번호 = e.target.dataset.id;
-        // });
-        
         $('.delete').click(function(e) {
             const 글번호 = e.target.dataset.id;
             const 지금누른버튼 = $(this);
@@ -59,8 +53,6 @@
                 console.log(xhr, textStatus, errorThrown);
             });
         });
-
-        
     </script>    
     
 

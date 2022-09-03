@@ -24,95 +24,6 @@ MongoClient.connect('mongodb+srv://junu:qwe123@cluster0.dkrrnaq.mongodb.net/?ret
 
 });
 
-/* Login */
-// 로그인 기능
-const passport = require('passport');
-const LocalStrategy = require('passport-local').Strategy;
-const session = require('express-session');
-
-// 요청 - 응답 중간에 뭔가 실행되는 코드
-app.use(session({secret : '비밀코드', resave : true, saveUninitialized : false}));
-app.use(passport.initialize());
-app.use(passport.session()); 
-
-// 로그인페이지 요청
-app.get('/login', function(요청, 응답){
-    응답.render('login.ejs')
-});
-
-// 로그인 시도를 할 경우 passport는 성공여부와 관계없이 session을 생성함.
-// 해당 session에 object 형식으로 message라는 키와 각 조건에 맞는 value가 추가 됨.
-passport.use(new LocalStrategy({
-    usernameField: 'id',
-    passwordField: 'pw',
-    session: true,
-    passReqToCallback: false,
-}, function (입력한아이디, 입력한비번, done) {
-    console.log(입력한아이디, 입력한비번);
-    db.collection('login').findOne({ id: 입력한아이디 }, function (에러, 결과) {
-        if (에러) return done()
-        if (!결과) return done(null, false, { message: '유효하지 않은 아이디입니다.' })
-        if (입력한비번 == 결과.pw) {
-            return done(null, 결과)
-        } else {
-            return done(null, false, { message: '유효하지 않은 비밀번호입니다.' })
-        }
-    })
-}));
-
-// 사용자가 /login에서 로그인을 시도할 경우 session에 정보가 저장되는데
-// 아래 코드에서는 info가 세션정보임.
-// console로 info를 출력해보면 쿠키를 비롯해 로그인 시도 결과에 대해서 message로 알려줌. 성공시에는 undefined.
-// info.message에는 로그인에 실패한 이유가 담기게 되고, 이 결과를 각 조건에 맞게 alert 창이나 html에 추가해 뿌려주면 됨.
-app.post('/login', function (요청, 응답, next) {
-    passport.authenticate('local', function (에러, user, info) {
-        console.log('info', info);
-        if (에러) {
-            return next(에러);
-        }
-        if (!user) {
-            요청.session.save(function () {
-                응답.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-                응답.write(`<script>alert(' ${info.message} ')</script>`);
-                응답.write("<script>window.location=\"/login\"</script>");
-            });
-            return;
-        }
-        요청.logIn(user, function (에러) {
-            if (에러) { return next(에러); }
-            요청.session.save(function () {
-                응답.redirect('/');
-            });
-        });
-    })(요청, 응답, next);
-});
-
-// app.post('/login',//검사하세요,function(요청, 응답){
-//     응답.render('login.ejs')
-// });
-
-// 로그인 페이지 
-// app.post('/login', passport.authenticate('local', {
-//     failureRedirect : '/fall' // 실패하면 fall로 보내주세요
-// }), function(요청, 응답){
-//     응답.redirect('/')
-// });
-
-//세션을 저장시키는 코드(성공시 발동)
-passport.serializeUser(function (user, done) {
-    done(null, user.id);
-});
-
-// 나중에 마이페이지 접속
-// 로그인한 유저의 개인정보를 db에서 찾는 역활
-// db에서 위에있는 user.id로 유저를 찾은 뒤에 유저정보를
-// done(null, {여기에 넣음})
-passport.deserializeUser(function (아이디, done) {
-    db.collection('login').findOne({ id: 아이디 }, function (에러, 결과) {
-        done(null, 결과)
-    })
-});
-
 /* Main */
 //메인페이지 요청
 app.get('/', function(요청, 응답){
@@ -257,3 +168,95 @@ app.get('/logout', function(요청, 응답){
         응답.redirect('/');
     });
 });
+
+/* Login */
+// 로그인 기능
+const passport = require('passport');
+const LocalStrategy = require('passport-local').Strategy;
+const session = require('express-session');
+
+// 요청 - 응답 중간에 뭔가 실행되는 코드
+app.use(session({secret : '비밀코드', resave : true, saveUninitialized : false}));
+app.use(passport.initialize());
+app.use(passport.session()); 
+
+// 로그인페이지 요청
+app.get('/login', function(요청, 응답){
+    응답.render('login.ejs')
+});
+
+// 로그인 시도를 할 경우 passport는 성공여부와 관계없이 session을 생성함.
+// 해당 session에 object 형식으로 message라는 키와 각 조건에 맞는 value가 추가 됨.
+passport.use(new LocalStrategy({
+    usernameField: 'id',
+    passwordField: 'pw',
+    session: true,
+    passReqToCallback: false,
+}, function (입력한아이디, 입력한비번, done) {
+    console.log(입력한아이디, 입력한비번);
+    db.collection('login').findOne({ id: 입력한아이디 }, function (에러, 결과) {
+        if (에러) return done()
+        if (!결과) return done(null, false, { message: '유효하지 않은 아이디입니다.' })
+        if (입력한비번 == 결과.pw) {
+            return done(null, 결과)
+        } else {
+            return done(null, false, { message: '유효하지 않은 비밀번호입니다.' })
+        }
+    })
+}));
+
+// 사용자가 /login에서 로그인을 시도할 경우 session에 정보가 저장되는데
+// 아래 코드에서는 info가 세션정보임.
+// console로 info를 출력해보면 쿠키를 비롯해 로그인 시도 결과에 대해서 message로 알려줌. 성공시에는 undefined.
+// info.message에는 로그인에 실패한 이유가 담기게 되고, 이 결과를 각 조건에 맞게 alert 창이나 html에 추가해 뿌려주면 됨.
+app.post('/login', function (요청, 응답, next) {
+    passport.authenticate('local', function (에러, user, info) {
+        console.log('info', info);
+        if (에러) {
+            return next(에러);
+        }
+        if (!user) {
+            요청.session.save(function () {
+                응답.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+                응답.write(`<script>alert(' ${info.message} ')</script>`);
+                응답.write("<script>window.location=\"/login\"</script>");
+            });
+            return;
+        }
+        요청.logIn(user, function (에러) {
+            if (에러) { return next(에러); }
+            요청.session.save(function () {
+                응답.redirect('/');
+            });
+        });
+    })(요청, 응답, next);
+});
+
+// app.post('/login',//검사하세요,function(요청, 응답){
+//     응답.render('login.ejs')
+// });
+
+// 로그인 페이지 
+// app.post('/login', passport.authenticate('local', {
+//     failureRedirect : '/fall' // 실패하면 fall로 보내주세요
+// }), function(요청, 응답){
+//     응답.redirect('/')
+// });
+
+//세션을 저장시키는 코드(성공시 발동)
+passport.serializeUser(function (user, done) {
+    done(null, user.id);
+});
+
+// 나중에 마이페이지 접속
+// 로그인한 유저의 개인정보를 db에서 찾는 역활
+// db에서 위에있는 user.id로 유저를 찾은 뒤에 유저정보를
+// done(null, {여기에 넣음})
+passport.deserializeUser(function (아이디, done) {
+    db.collection('login').findOne({ id: 아이디 }, function (에러, 결과) {
+        done(null, 결과)
+    })
+});
+
+
+
