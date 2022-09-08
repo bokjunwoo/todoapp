@@ -133,7 +133,7 @@ app.post('/add', function(요청, 응답){ //findOne 하나를 찾는다
         console.log(결과.totalPost);
         const 총게시물갯수 = 결과.totalPost;
 
-        var 저장할거 = {_id : 총게시물갯수 + 1, 제목 : 요청.body.title, 날짜 : 요청.body.date, 작성자 : 요청.user._id}
+        var 저장할거 = {_id : 총게시물갯수 + 1, 제목 : 요청.body.title, 날짜 : 요청.body.date, 작성자 : 요청.user._id, 이름 : 요청.user.id}
 
         // counter라는 콜렉션에 있는 totalPost 라는 항목도 1증가 시켜야함
         db.collection('post').insertOne(저장할거, function(에러, 결과){
@@ -307,7 +307,10 @@ app.get('/logout', function(요청, 응답){
         if(에러) { 
             return next(에러); 
         }
-        응답.redirect('/');
+        요청.session.destroy(function () {
+            응답.cookie("connect.sid", "", { maxAge: 0 });
+            응답.redirect("/");
+        });
     });
 });
 
@@ -385,3 +388,41 @@ app.get('/image/:imageName', function(요청, 응답){
     응답.sendFile(__dirname + '/public/image/' + 요청.params.imageName);
 });
 
+// 채팅
+// app.get('/chat/:id', function(요청, 응답){ // :id -> 문자열입력하면 보여줌
+//     요청.params.id = parseInt(요청.params.id); // id를 정수로 변경
+    
+//     db.collection('post').findOne({_id : 요청.params.id}, function(에러, 결과){ //params중 입력한 id라는 뜻
+//         console.log(결과);
+        
+//         if(응답) {
+//             응답.render('chat.ejs', {data : 결과});
+//         }
+//     });
+// });
+
+//
+const {ObjectId} = require('mongodb')
+
+app.post('/chat', 로그인했니, function(요청, 응답){
+    const 저장 = {
+        title : '무슨채팅방',
+        member : [ObjectId(요청.body.당한사람id), 요청.user._id],
+        date : new Date(),
+    };
+    db.collection('chatroom').insertOne(저장).then((결과) => {
+        응답.send('성공');
+    });
+});
+
+app.get('/chat', 로그인했니, (요청, 응답) => {
+    db.collection('chatroom').find({member : 요청.user._id}).toArray().then((결과) => {
+        응답.render('chat.ejs', { data : 결과 });
+    });
+});
+
+// app.get('/chat', 로그인했니, function(req, res) {
+//     db.collection('chatroom').find({member : req.user_id}).toArray().then((결과) => {
+//         res.render('chat.ejs', { data : 결과 });
+//     });
+// })

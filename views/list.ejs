@@ -26,13 +26,16 @@
         </div>
 
         <ul class="list-group">
-            <% for (var i=0; i < posts.length; i++){ %>
+            <% for (let i = 0; i < posts.length; i++){ %>
             <li class="list-group-item">
                 <p>글 번호 : <%= posts[i]._id %></p>
+                <p>작성자ID : <%= posts[i].이름 %></p>
                 <h5>할일 제목 : <%= posts[i].제목 %></h5>
                 <p>할일 마감날짜 : <%= posts[i].날짜 %></p>
                 <a href="./detail/<%= posts[i]._id %>"><button type="button" class="btn btn-primary">자세히보기</button></a>
+                <!-- <a href="./chat/<%= posts[i]._id %>"><button type="button" class="btn btn-success" id="chat">채팅</button></a> -->
                 <button type="button" class="btn btn-danger delete" data-id="<%= posts[i]._id %>">삭제</button>
+                <button class="btn btn-secondary chat" data-id="<%= posts[i].작성자 %>">채팅</button>
             </li>
             <% } %>
         </ul>
@@ -72,6 +75,13 @@
         // $.param(자료)
         // or
         // $(폼태그).serialize()
+
+        $('.chat').click(function(e){
+            const id = e.target.dataset.id;
+            $.post('/chat', {당한사람id : id}).then(() =>{
+                console.log('성공');
+            })
+        });
     </script>    
   </body>
 </html>

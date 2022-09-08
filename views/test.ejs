@@ -65,7 +65,7 @@
             data : {id: userId},
         }).done(function(결과){
             // 아이디가 중복일 경우
-            if(결과) {
+            if(결과 === '중복된 아이디입니다.') {
                 $('.text_id').css('color', 'red');
                 $('.text_id').text(결과);
             } else {
