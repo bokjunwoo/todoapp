@@ -66,10 +66,13 @@
         }).done(function(결과){
             // 아이디가 중복일 경우
             if(결과) {
+                $('.text_id').css('color', 'red');
+                $('.text_id').text(결과);
+            } else {
                 $('.text_id').css('color', 'green');
                 $('.text_id').text(결과);
-            }
-        })
+            };
+        });
     });
             
     
