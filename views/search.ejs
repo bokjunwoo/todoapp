@@ -18,7 +18,7 @@
     <%- include('nav.html') %>
 
     <div class="container">
-        <h4 class="m1-2 my-3 text-center">할일 리스트</h4>
+        <h4 class="m1-2 my-3 text-center">검색결과</h4>
         
         <div class="container input-group mb-2">
             <input class="form-control" id="search_input">
@@ -36,40 +36,6 @@
             </li>
             <% } %>
         </ul>
-    </div>
-    
-    <script>
-        $('.delete').click(function(e) {
-            const 글번호 = e.target.dataset.id;
-            const 지금누른버튼 = $(this);
-            
-            $.ajax({
-                method: 'DELETE',
-                url: '/delete',
-                // data: { _id: 지금내가 클릭한 버튼의 id를 여기에 넣기 },
-                data: { _id: 글번호},
-            }).done(function (결과) {
-                //페이지를 새로고침 해주세요
-                //삭제버튼 누른 요소를 제거해주세요
-                console.log('성공');
-                지금누른버튼.parent('li').fadeOut();
-                location.reload();
-            }).fail(function(xhr, textStatus, errorThrown){ //실패 했을 때
-                console.log(xhr, textStatus, errorThrown);
-            });
-        });
-
-        $('#search').click(function(){
-            const 입력한값 = $('#search_input').val();
-            // replace('/url?검색어=값') -> url바꿔주세요 GET요청 
-            window.location.replace('/search?value=' + 입력한값);
-        });
-
-        // 자바스크립트로 query string 만들기
-        // var 자료 = { 이름1 : '값', 이름2 : "값" };
-        // $.param(자료)
-        // or
-        // $(폼태그).serialize()
-    </script>    
+    </div>  
   </body>
 </html>

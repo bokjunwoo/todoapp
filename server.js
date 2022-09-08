@@ -147,7 +147,7 @@ app.post('/add', function(요청, 응답){ //findOne 하나를 찾는다
             });  
         }); 
     });
-    응답.redirect('/list');
+    응답.write("<script>window.location=\"/list\"</script>");
 });
 
 /* List */
@@ -171,13 +171,48 @@ app.delete('/delete', function(요청, 응답){
         응답.status(200).send({message : '성공했습니다'}); //응답코드와 메세지 보내주세요
     });
 });
+// 리스트 검색 기능
+app.get('/search', (요청, 응답) => {
+    console.log(요청.query.value); // 제목 : 요청.query.value는 일치하는 것만 찾아줌
+    // db.collection('post').find({제목 : 요청.query.value}).toArray((에러, 결과) => {
+    // 위 코드의 문제점 -> 1. 같은 값만 찾아옴 2. find()로 찾으면 데이터가 많을수록 오래 걸림 -> indexing해둔다
+    // Binary Search 적용 반으로 쪼개서 값을 찾음 -> 미리 정렬(indexing)하면 db는 알아서(Binary Search)함
+    
+    // $text : {$search: '값'} 만든 index에 의해 검사
+    // 1. 빠른검색 2. or검색 3. -제외가능 4. ""정확히 일치하는 것만
+    // 단점 : 한글친화적이 아님 띄어쓰기로 결과를 찾음 -> search index사용
+    // db.collection('post').find( {$text: { $search: 요청.query.value } }).toArray((에러, 결과) => {
+    //     console.log(결과);
+    //     응답.render('search.ejs', {posts : 결과});
+    // });
+
+    // .aggregate({},{},{}) {안에 원하는 데이터를 넣을 수 있다}
+    var 검색조건 = [
+        {
+            $search: {
+                index: 'titleSearch',
+                text: {
+                    query: 요청.query.value,
+                    path: '제목' // 제목날짜 둘다 찾고 싶으면 ['제목', '날짜']
+                }
+            }
+        },
+        { $sort : { _id : -1 }}, // 정렬
+        { $limit : 5 }, // 숫자만큼 보여줌(상위)
+        // { $project : { 제목: 1, _id: 0, score: { $meta: 'searchScore'}}} // 점수로 정렬
+    ]
+    db.collection('post').aggregate(검색조건).toArray((에러, 결과) => {
+        응답.render('search.ejs', {posts : 결과});
+        console.log(결과);
+    });
+   
+});
 
 /* Detail */
 // 상세정보로 요청
 app.get('/detail/:id', function(요청, 응답){ // :id -> 문자열입력하면 보여줌
     요청.params.id = parseInt(요청.params.id); // id를 정수로 변경
     
-    // db.collection('post').findOne({_id : parseInt(요청.params.id)}, function(에러, 결과)
     db.collection('post').findOne({_id : 요청.params.id}, function(에러, 결과){ //params중 입력한 id라는 뜻
         console.log(결과);
         
@@ -221,31 +256,42 @@ function 로그인했니(요청, 응답, next){
     if(요청.user){
         next()
     } else {
-        응답.send('로그인필요')
+        응답.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+        응답.write(`<script>alert('로그인이 필요합니다.')</script>`);
+        응답.write("<script>window.location=\"/login\"</script>");
     }
 }
 
 /* Sign up */
-// 회원가입 요청
-app.get('/signup', function(요청, 응답){
-    응답.render('signup.ejs')
-})
+// // 회원가입 요청
+// app.get('/signup', function(요청, 응답){
+//     응답.render('signup.ejs')
+// })
 
-// 회원가입 중복검사
-app.post('/signup', function(요청, 응답){
+// // 회원가입 중복검사
+// app.post('/signup', function(요청, 응답){
     
-    db.collection('login').findOne({id : 요청.body.id}, function(에러, 결과){
-        console.log('입력완료');
-        if(결과?.id === 요청.body.id) {
-            응답.send('아이디 중복 입니다')
-        } else {
-            db.collection('login').insertOne({id : 요청.body.id, pw : 요청.body.pw}, function(에러, 결과){
-                console.log('입력완료');
-                응답.redirect('/login');
-            });
-        };
-    });
-});
+//     // db.collection('login').findOne({id : 요청.body.id}, function(에러, 결과){
+//     //     console.log('입력완료');
+//     //     if(결과?.id === 요청.body.id) {
+//     //         응답.send('아이디 중복 입니다')
+//     //     } else {
+//     //         db.collection('login').insertOne({id : 요청.body.id, pw : 요청.body.pw}, function(에러, 결과){
+//     //             console.log('입력완료');
+//     //             응답.redirect('/login');
+//     //         });
+//     //     };
+//     // });
+ 
+//     db.collection("login").findOne({id : 요청.body.id}, function(error,result){
+//         if(result) {
+//             응답.send("중복된 아이디입니다.");
+//         } else {
+//             응답.send("사용 가능한 아이디입니다.");
+//         }
+//     })
+
+// });
 
 /* Logout */
 // 로그아웃 페이지
@@ -256,4 +302,34 @@ app.get('/logout', function(요청, 응답){
         }
         응답.redirect('/');
     });
+});
+
+// 회원가입 요청
+app.get('/test', function(요청, 응답){
+    응답.render('test.ejs', { 사용자 : 요청.id})
+})
+
+// 회원가입 중복검사
+app.post('/test', function(요청, 응답){
+    
+    // db.collection('login').findOne({id : 요청.body.id}, function(에러, 결과){
+    //     console.log('입력완료');
+    //     if(결과?.id === 요청.body.id) {
+    //         응답.send('아이디 중복 입니다')
+    //     } else {
+    //         db.collection('login').insertOne({id : 요청.body.id, pw : 요청.body.pw}, function(에러, 결과){
+    //             console.log('입력완료');
+    //             응답.redirect('/login');
+    //         });
+    //     };
+    // });
+ 
+    db.collection("login").findOne({id : 요청.body.id}, function(에러, 결과){
+        if(결과?.id === 요청.body.id) {
+            응답.send('중복된 아이디입니다.');
+        } else {
+            응답.send('사용 가능한 아이디입니다.');
+        }
+    })
+
 });
