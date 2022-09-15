@@ -1,6 +1,11 @@
 const express = require('express');
 const app = express();
 
+// socket.io
+const http = require('http').createServer(app);
+const {Server} = require('socket.io');
+const io = new Server(http);
+
 app.use(express.urlencoded({extended: true}));
 
 app.set('view engine', 'ejs') // ejs 사용
@@ -18,7 +23,7 @@ MongoClient.connect('mongodb+srv://junu:qwe123@cluster0.dkrrnaq.mongodb.net/?ret
 
     db = client.db('todoapp') // 데이터 저장
 
-    app.listen(8080, function(){
+    http.listen(8080, function(){
         console.log('listening on 8080');
     });
 
@@ -81,7 +86,7 @@ app.post('/login', function (요청, 응답, next) {
         요청.logIn(user, function (에러) {
             if (에러) { return next(에러); }
             요청.session.save(function () {
-                응답.redirect('/');
+                응답.redirect('/mypage');
             });
         });
     })(요청, 응답, next);
@@ -121,7 +126,7 @@ app.get('/', function(요청, 응답){
 
 /* Write*/
 //글쓰기페이지 요청
-app.get('/write', function(요청, 응답){
+app.get('/write', 로그인했니, function(요청, 응답){
     응답.render('write.ejs')
 });
 
@@ -132,11 +137,22 @@ app.post('/add', function(요청, 응답){ //findOne 하나를 찾는다
     db.collection('counter').findOne({name : '게시물 개수'}, function(에러, 결과){
         console.log(결과.totalPost);
         const 총게시물갯수 = 결과.totalPost;
+        const date = new Date;
+        const hours = ('0' + date.getHours()).slice(-2);
+        const minutes = ('0' + date.getMinutes()).slice(-2);
+        const timeStr = hours + ':' + minutes;
 
-        var 저장할거 = {_id : 총게시물갯수 + 1, 제목 : 요청.body.title, 날짜 : 요청.body.date, 작성자 : 요청.user._id, 이름 : 요청.user.id}
+        var 저장할데이터 = {
+            _id : 총게시물갯수 + 1, 
+            제목 : 요청.body.title, 
+            날짜 : 요청.body.date,
+            고유id : 요청.user._id,
+            작성자닉네임 : 요청.user.name, 
+            작성시간 : timeStr,
+        }
 
         // counter라는 콜렉션에 있는 totalPost 라는 항목도 1증가 시켜야함
-        db.collection('post').insertOne(저장할거, function(에러, 결과){
+        db.collection('post').insertOne(저장할데이터, function(에러, 결과){
             console.log('저장완료');
 
             // db.collection('counter').updateOne 데이터 하나를 수정 ({어떤데이터를 수정할지},{수정값},function())  $set -> operator
@@ -166,10 +182,11 @@ app.delete('/delete', function(요청, 응답){
     console.log(요청.body);
     요청.body._id = parseInt(요청.body._id); //정수 변환
 
-    var 삭제할데이터 = { _id : 요청.body._id, 작성자 : 요청.user._id};
+    var 삭제할데이터 = { _id : 요청.body._id, 고유id : 요청.user._id};
 
     //요청.body에 담겨온 게시물번호를 가진 글을 db에서 찾아 삭제하기
     //db.collection('post').deleteOne({어떤항목 삭제할지}, function(){})
+
     db.collection('post').deleteOne(삭제할데이터, function(에러, 결과){
         console.log('삭제완료');
         if(에러) {
@@ -300,27 +317,8 @@ app.get('/signup', function(요청, 응답){
 
 // });
 
-/* Logout */
-// 로그아웃 페이지
-app.get('/logout', function(요청, 응답){
-    요청.logout(function (에러) {
-        if(에러) { 
-            return next(에러); 
-        }
-        요청.session.destroy(function () {
-            응답.cookie("connect.sid", "", { maxAge: 0 });
-            응답.redirect("/");
-        });
-    });
-});
-
-// 회원가입 요청
-app.get('/test', function(요청, 응답){
-    응답.render('test.ejs', { 사용자 : 요청.id})
-})
-
 // 회원가입 중복검사
-app.post('/test', function(요청, 응답){
+app.post('/signup', function(요청, 응답){
     
     // db.collection('login').findOne({id : 요청.body.id}, function(에러, 결과){
     //     console.log('입력완료');
@@ -343,13 +341,31 @@ app.post('/test', function(요청, 응답){
     });
 });
 
-// app.use -> 미들웨어 사용
-app.use('/shop', require('./routes/shop.js'));
 
-app.use('/board/sub', require('./routes/board.js'));
+/* Logout */
+// 로그아웃 페이지
+app.get('/logout', function(요청, 응답){
+    요청.logout(function (에러) {
+        if(에러) { 
+            return next(에러); 
+        }
+        요청.session.destroy(function () {
+            응답.cookie("connect.sid", "", { maxAge: 0 });
+            응답.redirect("/");
+        });
+    });
+});
 
-
-// 이미지 업로드
+/* Image */
+// 이미지페이지 요청
+app.get('/upload', function(요청, 응답){
+    응답.render('upload.ejs');
+});
+// 이미지 상세요청
+app.get('/image/:imageName', function(요청, 응답){
+    응답.sendFile(__dirname + '/public/image/' + 요청.params.imageName);
+});
+// 이미지 업로드 라이브러리 사용
 let multer = require('multer');
 const storage = multer.diskStorage({
 
@@ -372,23 +388,14 @@ const storage = multer.diskStorage({
     },
 });
 const upload = multer({storage : storage});
-
-app.get('/upload', function(요청, 응답){
-    응답.render('upload.ejs');
-});
-
+// 이미지 업로드
 // app.post('/upload', upload.single('input의 name속성이름'), function(요청, 응답){
 // upload.array('input의 name속성이름', 최대 올릴숫자)
 app.post('/upload', upload.array('img', 3), function(요청, 응답){
     응답.send('업로드완료')
 });
 
-// 이미지
-app.get('/image/:imageName', function(요청, 응답){
-    응답.sendFile(__dirname + '/public/image/' + 요청.params.imageName);
-});
-
-// 채팅
+// 채팅페이지 요청(내가)
 // app.get('/chat/:id', function(요청, 응답){ // :id -> 문자열입력하면 보여줌
 //     요청.params.id = parseInt(요청.params.id); // id를 정수로 변경
     
@@ -401,28 +408,97 @@ app.get('/image/:imageName', function(요청, 응답){
 //     });
 // });
 
-//
+/* Chat */
+// 채팅페이지 요청
 const {ObjectId} = require('mongodb')
+
+app.get('/chat', 로그인했니, (요청, 응답) => {
+    db.collection('chatroom').find({member : 요청.user.name}).toArray().then((결과) => {
+
+        응답.render('chat.ejs', { data : 결과 });
+    });
+});
 
 app.post('/chat', 로그인했니, function(요청, 응답){
     const 저장 = {
-        title : '무슨채팅방',
-        member : [ObjectId(요청.body.당한사람id), 요청.user._id],
-        date : new Date(),
+        title : 요청.body.선택한글,
+        member : [요청.body.당한사람닉네임, 요청.user.name],
+        date : 요청.body.시간,
     };
     db.collection('chatroom').insertOne(저장).then((결과) => {
         응답.send('성공');
     });
 });
 
-app.get('/chat', 로그인했니, (요청, 응답) => {
-    db.collection('chatroom').find({member : 요청.user._id}).toArray().then((결과) => {
-        응답.render('chat.ejs', { data : 결과 });
+app.post('/message', 로그인했니, function(요청, 응답){
+    const date = new Date;
+    const hours = ('0' + date.getHours()).slice(-2);
+    const minutes = ('0' + date.getMinutes()).slice(-2);
+    const timeStr = hours + ':' + minutes;
+    
+    const 저장할데이터 = {
+        parent : 요청.body.parent,
+        content : 요청.body.content,
+        userid : 요청.user._id,
+        date : timeStr,
+    }
+
+    db.collection('message').insertOne(저장할데이터).then(() => {
+        console.log('db저장성공')
+        응답.send('db저장성공')
+    })
+})
+
+app.get('/message/:id', 로그인했니, function (요청, 응답) {
+
+    응답.writeHead(200, {
+        "Connection": "keep-alive",
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+    });
+
+    db.collection('message').find({ parent: 요청.params.id }).toArray().then((결과) => {
+        응답.write('event: test\n'); // event : 보낼데이터이름 \n
+        응답.write('data: ' + JSON.stringify(결과) + '\n\n'); // data : 보낼데이터 \n\n
+
+        // change Stream 설정법
+        const pipeline = [
+            { $match: { 'fullDocument.parent': 요청.params.id } }
+        ];
+        const collection = db.collection('message');
+        const changeStream = collection.watch(pipeline);
+        changeStream.on('change', (result) => {
+            console.log(result.fullDocument);
+            응답.write('event: test\n');
+            응답.write('data: ' + JSON.stringify([result.fullDocument]) + '\n\n'); // data : 보낼데이터 \n\n
+        });
     });
 });
 
-// app.get('/chat', 로그인했니, function(req, res) {
-//     db.collection('chatroom').find({member : req.user_id}).toArray().then((결과) => {
-//         res.render('chat.ejs', { data : 결과 });
-//     });
-// })
+/* Socket */
+
+app.get('/socket', function(요청, 응답){
+    응답.render('socket.ejs')
+});
+
+io.on('connection', function(socket){
+    console.log('유저접속');
+
+    socket.join('room1'); // 채팅방 만들고 입장 join
+
+    // 서버가 수신하려면 socket.on(작명, 콜백함수)
+    socket.on('user_send', function(data){ // data -> 유저가 보낸 메세지
+        console.log(data);
+        io.emit('broadcast', data); // 서버가 보내는 메세지
+        // .to() 서버-유저1명간 단독으로 소통
+        // io.to(socket.id).emit('broadcast', data); // socket 접속유저 정보 들어있음
+    });
+
+    socket.on('joinroom', function(data){ // data -> 유저가 보낸 메세지
+        socket.join('room1');
+    });
+
+    socket.on('room1_send', function(data){ // data -> 유저가 보낸 메세지
+        io.to('room1').emit('broadcast', data);
+    });
+});

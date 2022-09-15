@@ -37,5 +37,13 @@
             <% } %>
         </ul>
     </div>  
+
+    <script>
+      $('#search').click(function(){
+            const 입력한값 = $('#search_input').val();
+            // replace('/url?검색어=값') -> url바꿔주세요 GET요청 
+            window.location.replace('/search?value=' + 입력한값);
+        });
+    </script>
   </body>
 </html>
